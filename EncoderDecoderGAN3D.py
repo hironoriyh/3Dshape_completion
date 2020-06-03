@@ -166,24 +166,27 @@ class EncoderDecoderGAN():
 
     def train(self, epochs, batch_size=16, sample_interval=50):
 
-        X_train = self.generateWall()
+        # X_train = self.generateWall()
+        X_train = np.load("branch_voxels.npy")
         print(X_train.shape)
+
         # Adversarial ground truths
         valid = np.ones((batch_size, 1))
         fake = np.zeros((batch_size, 1))
-        print("valid and fake", valid.shape, fake.shape)
+        # print("valid and fake", valid.shape, fake.shape)
+
         for epoch in range(epochs):
 
             # Train Discriminator
             idx = np.random.randint(0, X_train.shape[0], batch_size)
             vols = X_train[idx]
-            print(vols.shape)
+            # print(vols.shape)
 
             masked_vols, missing_parts, _ = self.mask_randomly(vols)
-            print("masked vol and missing parts", masked_vols.shape, missing_parts.shape)
+            # print("masked vol and missing parts", masked_vols.shape, missing_parts.shape)
             # Generate a batch
             gen_missing = self.generator.predict(masked_vols)
-            print(gen_missing.shape)
+            # print(gen_missing.shape)
 
             d_loss_real = self.discriminator.train_on_batch(missing_parts, valid)
             d_loss_fake = self.discriminator.train_on_batch(gen_missing, fake)
@@ -256,5 +259,5 @@ class EncoderDecoderGAN():
 
 
 if __name__ == '__main__':
-    context_encoder = EncoderDecoderGAN()
+    context_encoder = EncoderDecoderGAN(64)
     context_encoder.train(epochs=3000, batch_size=5, sample_interval=200)
