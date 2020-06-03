@@ -15,8 +15,10 @@ from keras.optimizers import Adam
 from sklearn.metrics import hamming_loss
 from utils import mkdirs
 
-IMAGE_DIR = './32_cube/images'
-MODEL_DIR = './32_cube/saved_model'
+size_of_voxel = 64
+
+IMAGE_DIR = './' + str(size_of_voxel) + '_cube/images'
+MODEL_DIR = './' + str(size_of_voxel) + '_cube/saved_model'
 
 mkdirs(IMAGE_DIR)
 mkdirs(MODEL_DIR)
@@ -24,12 +26,12 @@ mkdirs(MODEL_DIR)
 
 class EncoderDecoderGAN():
     def __init__(self):
-        self.vol_rows = 32
-        self.vol_cols = 32
-        self.vol_height = 32
-        self.mask_height = 16
-        self.mask_width = 16
-        self.mask_length = 16
+        self.vol_rows = size_of_voxel
+        self.vol_cols = size_of_voxel
+        self.vol_height = size_of_voxel
+        self.mask_height = int(size_of_voxel/2)
+        self.mask_width = int(size_of_voxel/2)
+        self.mask_length = int(size_of_voxel/2)
         self.channels = 1
         self.num_classes = 2
         self.vol_shape = (self.vol_rows, self.vol_cols, self.vol_height, self.channels)
@@ -73,7 +75,6 @@ class EncoderDecoderGAN():
     def build_generator(self):
 
         model = Sequential()
-
         # Encoder
         model.add(Conv3D(32, kernel_size=5, strides=2, input_shape=self.vol_shape, padding="same"))
         model.add(LeakyReLU(alpha=0.2))
@@ -133,8 +134,8 @@ class EncoderDecoderGAN():
         return Model(vol, validity)
 
     def generateWall(self):
-        x, y, z = np.indices((32, 32, 32))
-        voxel = (x < 28) & (x > 5) & (y > 5) & (y < 28) & (z > 10) & (z < 25)
+        x, y, z = np.indices((self.vol_rows, self.vol_cols, self.vol_height))
+        voxel = (x < self.vol_rows-5) & (x > 5) & (y > 5) & (y < self.vol_cols-5) & (z > 10) & (z < self.vol_height-10)
         # add channel
         voxel = voxel[..., np.newaxis].astype(np.float)
         # repeat 1000 times
