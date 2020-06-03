@@ -15,23 +15,22 @@ from keras.optimizers import Adam
 from sklearn.metrics import hamming_loss
 from utils import mkdirs
 
-size_of_voxel = 64
-
-IMAGE_DIR = './' + str(size_of_voxel) + '_cube/images'
-MODEL_DIR = './' + str(size_of_voxel) + '_cube/saved_model'
+IMAGE_DIR = './32_cube/images'
+MODEL_DIR = './32_cube/saved_model'
 
 mkdirs(IMAGE_DIR)
 mkdirs(MODEL_DIR)
 
 
 class EncoderDecoderGAN():
-    def __init__(self):
-        self.vol_rows = size_of_voxel
-        self.vol_cols = size_of_voxel
-        self.vol_height = size_of_voxel
-        self.mask_height = int(size_of_voxel/2)
-        self.mask_width = int(size_of_voxel/2)
-        self.mask_length = int(size_of_voxel/2)
+    def __init__(self, voxel_size=32):
+        # voxel_size = 32
+        self.vol_rows = voxel_size
+        self.vol_cols = voxel_size
+        self.vol_height = voxel_size
+        self.mask_height = int(self.vol_rows/2)
+        self.mask_width = int(self.vol_cols/2)
+        self.mask_length = int(self.vol_height/2)
         self.channels = 1
         self.num_classes = 2
         self.vol_shape = (self.vol_rows, self.vol_cols, self.vol_height, self.channels)
@@ -75,6 +74,7 @@ class EncoderDecoderGAN():
     def build_generator(self):
 
         model = Sequential()
+
         # Encoder
         model.add(Conv3D(32, kernel_size=5, strides=2, input_shape=self.vol_shape, padding="same"))
         model.add(LeakyReLU(alpha=0.2))
@@ -135,7 +135,7 @@ class EncoderDecoderGAN():
 
     def generateWall(self):
         x, y, z = np.indices((self.vol_rows, self.vol_cols, self.vol_height))
-        voxel = (x < self.vol_rows-5) & (x > 5) & (y > 5) & (y < self.vol_cols-5) & (z > 10) & (z < self.vol_height-10)
+        voxel = (x < self.vol_rows-5) & (x > 5) & (y > 5) & (y < self.vol_cols-5) & (z > 10) & (z <self.vol_height-10)
         # add channel
         voxel = voxel[..., np.newaxis].astype(np.float)
         # repeat 1000 times
@@ -167,19 +167,23 @@ class EncoderDecoderGAN():
     def train(self, epochs, batch_size=16, sample_interval=50):
 
         X_train = self.generateWall()
+        print(X_train.shape)
         # Adversarial ground truths
         valid = np.ones((batch_size, 1))
         fake = np.zeros((batch_size, 1))
-
+        print("valid and fake", valid.shape, fake.shape)
         for epoch in range(epochs):
 
             # Train Discriminator
             idx = np.random.randint(0, X_train.shape[0], batch_size)
             vols = X_train[idx]
+            print(vols.shape)
+
             masked_vols, missing_parts, _ = self.mask_randomly(vols)
+            print("masked vol and missing parts", masked_vols.shape, missing_parts.shape)
             # Generate a batch
             gen_missing = self.generator.predict(masked_vols)
-            # print(gen_missing.shape)
+            print(gen_missing.shape)
 
             d_loss_real = self.discriminator.train_on_batch(missing_parts, valid)
             d_loss_fake = self.discriminator.train_on_batch(gen_missing, fake)
