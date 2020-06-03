@@ -15,15 +15,15 @@ from keras.optimizers import Adam
 from sklearn.metrics import hamming_loss
 from utils import mkdirs
 
-IMAGE_DIR = './32_cube/images'
-MODEL_DIR = './32_cube/saved_model'
+IMAGE_DIR = './64_cube/images'
+MODEL_DIR = './64_cube/saved_model'
 
 mkdirs(IMAGE_DIR)
 mkdirs(MODEL_DIR)
 
 
 class EncoderDecoderGAN():
-    def __init__(self, voxel_size=32):
+    def __init__(self, voxel_size=64):
         # voxel_size = 32
         self.vol_rows = voxel_size
         self.vol_cols = voxel_size
@@ -35,7 +35,8 @@ class EncoderDecoderGAN():
         self.num_classes = 2
         self.vol_shape = (self.vol_rows, self.vol_cols, self.vol_height, self.channels)
         self.missing_shape = (self.mask_height, self.mask_width, self.mask_length, self.channels)
-
+	
+        print("shape", self.vol_shape)
         optimizer = Adam(0.0002, 0.5)
 
         try:
@@ -260,4 +261,4 @@ class EncoderDecoderGAN():
 
 if __name__ == '__main__':
     context_encoder = EncoderDecoderGAN(64)
-    context_encoder.train(epochs=3000, batch_size=5, sample_interval=200)
+    context_encoder.train(epochs=3000, batch_size=15, sample_interval=200)
