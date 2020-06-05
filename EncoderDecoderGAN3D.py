@@ -39,15 +39,15 @@ class EncoderDecoderGAN():
         print("shape", self.vol_shape)
         optimizer = Adam(0.0002, 0.5)
 
-        try:
-            self.discriminator = load_model(os.path.join(MODEL_DIR, 'discriminator.h5'))
-            self.generator = load_model(os.path.join(MODEL_DIR, 'generator.h5'))
+        #try:
+        #    self.discriminator = load_model(os.path.join(MODEL_DIR, 'discriminator.h5'))
+        #    self.generator = load_model(os.path.join(MODEL_DIR, 'generator.h5'))
 
-            print("Loaded checkpoints")
-        except:
-            self.generator = self.build_generator()
-            self.discriminator = self.build_discriminator()
-            print("No checkpoints found")
+        #    print("Loaded checkpoints")
+        #except:
+        self.generator = self.build_generator()
+        self.discriminator = self.build_discriminator()
+        print("No checkpoints found")
 
             # discriminator
         self.discriminator.compile(loss='binary_crossentropy',
@@ -261,4 +261,4 @@ class EncoderDecoderGAN():
 
 if __name__ == '__main__':
     context_encoder = EncoderDecoderGAN(64)
-    context_encoder.train(epochs=3000, batch_size=15, sample_interval=200)
+    context_encoder.train(epochs=3000, batch_size=5, sample_interval=200)
