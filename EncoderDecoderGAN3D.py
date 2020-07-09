@@ -56,7 +56,9 @@ class EncoderDecoderGAN():
         # generator
         # The generator takes noise as input and generates the missing part
         masked_vol = Input(shape=self.vol_shape)
-        gen_missing = self.generator(masked_vol)
+        print("masked vold shape", masked_vol.shape) ##  (None, 64, 64, 64, 1)
+        gen_missing = self.generator(masked_vol) 
+        print("gen_missing", gen_missing.shape) ## gen_missing (None, None, None, None, 1)
 
         # For the combined model we will only train the generator
         self.discriminator.trainable = False
@@ -64,6 +66,7 @@ class EncoderDecoderGAN():
         # The discriminator takes generated voxels as input and determines
         # if it is generated or if it is a real voxels
         valid = self.discriminator(gen_missing)
+        print("valid", valid, valid.shape)  ## Tensor("model_2/sequential_2/dense_1/Sigmoid:0", shape=(None, 1), dtype=float32) (None, 1)
 
         # The combined model  (stacked generator and discriminator)
         # Trains generator to fool discriminator
@@ -168,8 +171,8 @@ class EncoderDecoderGAN():
     def train(self, epochs, batch_size=16, sample_interval=50):
 
         # X_train = self.generateWall()
-        X_train = np.load("branch_voxels.npy")
-        print(X_train.shape)
+        X_train = np.load("../imnet/point_sampling/branch_voxels.npy") 
+        print("loaded", X_train.shape)
 
         # Adversarial ground truths
         valid = np.ones((batch_size, 1))
@@ -185,9 +188,10 @@ class EncoderDecoderGAN():
 
             masked_vols, missing_parts, _ = self.mask_randomly(vols)
             # print("masked vol and missing parts", masked_vols.shape, missing_parts.shape)
+
             # Generate a batch
             gen_missing = self.generator.predict(masked_vols)
-            # print(gen_missing.shape)
+            print("shape of generator", gen_missing.shape)
 
             d_loss_real = self.discriminator.train_on_batch(missing_parts, valid)
             d_loss_fake = self.discriminator.train_on_batch(gen_missing, fake)

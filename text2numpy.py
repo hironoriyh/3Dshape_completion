@@ -5,7 +5,10 @@ from mpl_toolkits.mplot3d import Axes3D
 import os
 
 
-fs = os.listdir("./test/tree3/")
+input_dir = "./test/tree5/"
+output_dir = "./data/tree5/"
+
+fs = os.listdir(input_dir)
 fs.sort()
 filenames = []
 for filename in fs:
@@ -17,7 +20,8 @@ for filename in fs:
     else:
         continue
 
-fs = os.listdir("data/")
+## check if there is already files
+fs = os.listdir(output_dir)
 # fs.sort()
 print(fs)
 
@@ -29,8 +33,8 @@ for filename in filenames:
         continue
 
     try:
-        all_txt = open("test/tree3/" + filename + "_pattern_1.txt", 'r')
-        mask_txt = open("test/tree3/" + filename + "_pattern_2.txt", 'r')
+        all_txt = open(input_dir + filename + "_pattern_1.txt", 'r')
+        mask_txt = open(input_dir + filename + "_pattern_2.txt", 'r')
         # size = mask_txt.readline(0)
         vox_all = all_txt.readlines()[1].split(",")
         vox_mask = mask_txt.readlines()[1].split(",")
@@ -97,10 +101,10 @@ for filename in filenames:
     ax1.voxels(all_np, facecolors='red', edgecolor='k')
     ax2.voxels(missing_parts, facecolors='green', edgecolor='k')
     ax3.voxels(masked_vol, facecolors='blue', edgecolor='k')
-    fig_path = "data/" + filename +".png"
+    fig_path = output_dir + filename +".png"
     plt.savefig(fig_path) # get only the filename
     # plt.show()
 
-    np.save("data/" + filename + "_all.npy", all_np)
-    np.save("data/" + filename + "_missing.npy", missing_parts)
-    np.save("data/" + filename + "_masked.npy", masked_vol)
+    np.save(output_dir + filename + "_all.npy", all_np)
+    np.save(output_dir + filename + "_missing.npy", missing_parts)
+    np.save(output_dir + filename + "_masked.npy", masked_vol)
