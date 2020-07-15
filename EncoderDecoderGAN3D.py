@@ -11,43 +11,43 @@ from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import UpSampling3D, Conv3D, Deconv3D
 from keras.models import Sequential, Model
 from keras.models import load_model
-from keras.optimizers import Adam
+# from keras.optimizers import Adam
+from tensorflow.keras.optimizers import Adam
+
 from sklearn.metrics import hamming_loss
 from utils import mkdirs
 
-IMAGE_DIR = './64_cube/images'
-MODEL_DIR = './64_cube/saved_model'
+IMAGE_DIR = './32_cube/images'
+MODEL_DIR = './32_cube/saved_model'
 
 mkdirs(IMAGE_DIR)
 mkdirs(MODEL_DIR)
 
 
 class EncoderDecoderGAN():
-    def __init__(self, voxel_size=64):
-        # voxel_size = 32
-        self.vol_rows = voxel_size
-        self.vol_cols = voxel_size
-        self.vol_height = voxel_size
-        self.mask_height = int(self.vol_rows/2)
-        self.mask_width = int(self.vol_cols/2)
-        self.mask_length = int(self.vol_height/2)
+    def __init__(self):
+        self.vol_rows = 32
+        self.vol_cols = 32
+        self.vol_height = 32
+        self.mask_height = 16
+        self.mask_width = 16
+        self.mask_length = 16
         self.channels = 1
         self.num_classes = 2
         self.vol_shape = (self.vol_rows, self.vol_cols, self.vol_height, self.channels)
         self.missing_shape = (self.mask_height, self.mask_width, self.mask_length, self.channels)
-	
-        print("shape", self.vol_shape)
+
         optimizer = Adam(0.0002, 0.5)
 
-        #try:
-        #    self.discriminator = load_model(os.path.join(MODEL_DIR, 'discriminator.h5'))
-        #    self.generator = load_model(os.path.join(MODEL_DIR, 'generator.h5'))
+        try:
+            self.discriminator = load_model(os.path.join(MODEL_DIR, 'discriminator.h5'))
+            self.generator = load_model(os.path.join(MODEL_DIR, 'generator.h5'))
 
-        #    print("Loaded checkpoints")
-        #except:
-        self.generator = self.build_generator()
-        self.discriminator = self.build_discriminator()
-        print("No checkpoints found")
+            print("Loaded checkpoints")
+        except:
+            self.generator = self.build_generator()
+            self.discriminator = self.build_discriminator()
+            print("No checkpoints found")
 
             # discriminator
         self.discriminator.compile(loss='binary_crossentropy',
@@ -56,9 +56,7 @@ class EncoderDecoderGAN():
         # generator
         # The generator takes noise as input and generates the missing part
         masked_vol = Input(shape=self.vol_shape)
-        print("masked vold shape", masked_vol.shape) ##  (None, 64, 64, 64, 1)
-        gen_missing = self.generator(masked_vol) 
-        print("gen_missing", gen_missing.shape) ## gen_missing (None, None, None, None, 1)
+        gen_missing = self.generator(masked_vol)
 
         # For the combined model we will only train the generator
         self.discriminator.trainable = False
@@ -66,7 +64,6 @@ class EncoderDecoderGAN():
         # The discriminator takes generated voxels as input and determines
         # if it is generated or if it is a real voxels
         valid = self.discriminator(gen_missing)
-        print("valid", valid, valid.shape)  ## Tensor("model_2/sequential_2/dense_1/Sigmoid:0", shape=(None, 1), dtype=float32) (None, 1)
 
         # The combined model  (stacked generator and discriminator)
         # Trains generator to fool discriminator
@@ -106,6 +103,11 @@ class EncoderDecoderGAN():
         model.add(Activation('relu'))
         model.add(BatchNormalization(momentum=0.8))
         model.add(UpSampling3D())
+        model.add(Deconv3D(32, kernel_size=5, padding="same"))
+        model.add(Activation('relu'))
+        model.add(BatchNormalization(momentum=0.8))
+        model.add(UpSampling3D())
+
         model.add(Deconv3D(self.channels, kernel_size=5, padding="same"))
         model.add(Activation('tanh'))
         model.summary()
@@ -118,8 +120,12 @@ class EncoderDecoderGAN():
     def build_discriminator(self):
 
         model = Sequential()
+        # model.add(Conv3D(32, kernel_size=3, strides=2, input_shape=self.missing_shape, padding="same"))
 
-        model.add(Conv3D(64, kernel_size=3, strides=2, input_shape=self.missing_shape, padding="same"))
+        model.add(Conv3D(32, kernel_size=3, strides=2, input_shape=self.vol_shape, padding="same"))
+        model.add(LeakyReLU(alpha=0.2))
+        model.add(BatchNormalization(momentum=0.8))
+        model.add(Conv3D(64, kernel_size=3, strides=2, padding="same"))
         model.add(LeakyReLU(alpha=0.2))
         model.add(BatchNormalization(momentum=0.8))
         model.add(Conv3D(128, kernel_size=3, strides=2, padding="same"))
@@ -132,14 +138,16 @@ class EncoderDecoderGAN():
         model.add(Dense(1, activation='sigmoid'))
         model.summary()
 
-        vol = Input(shape=self.missing_shape)
+        # vol = Input(shape=self.missing_shape)
+        vol = Input(shape=self.vol_shape)
+
         validity = model(vol)
 
         return Model(vol, validity)
 
     def generateWall(self):
-        x, y, z = np.indices((self.vol_rows, self.vol_cols, self.vol_height))
-        voxel = (x < self.vol_rows-5) & (x > 5) & (y > 5) & (y < self.vol_cols-5) & (z > 10) & (z <self.vol_height-10)
+        x, y, z = np.indices((32, 32, 32))
+        voxel = (x < 28) & (x > 5) & (y > 5) & (y < 28) & (z > 10) & (z < 25)
         # add channel
         voxel = voxel[..., np.newaxis].astype(np.float)
         # repeat 1000 times
@@ -158,56 +166,64 @@ class EncoderDecoderGAN():
         z2 = z1 + self.mask_length
 
         masked_vols = np.empty_like(vols)
-        missing_parts = np.empty((vols.shape[0], self.mask_height, self.mask_width, self.mask_length, self.channels))
+        missing_parts = np.empty_like(vols)
         for i, vol in enumerate(vols):
             masked_vol = vol.copy()
             _y1, _y2, _x1, _x2, _z1, _z2 = y1[i], y2[i], x1[i], x2[i], z1[i], z2[i]
-            missing_parts[i] = masked_vol[_y1:_y2, _x1:_x2, _z1:_z2, :].copy()
             masked_vol[_y1:_y2, _x1:_x2, _z1:_z2, :] = 0
             masked_vols[i] = masked_vol
-
+            # print(vol.shape, masked_vol.shape)
+            missing_parts[i] = vol.copy() - masked_vol.copy() 
         return masked_vols, missing_parts, (y1, y2, x1, x2, z1, z2)
 
     def train(self, epochs, batch_size=16, sample_interval=50):
 
-        # X_train = self.generateWall()
-        X_train = np.load("../imnet/point_sampling/branch_voxels.npy") 
-        print("loaded", X_train.shape)
-
+        X_train = self.generateWall()
         # Adversarial ground truths
         valid = np.ones((batch_size, 1))
         fake = np.zeros((batch_size, 1))
-        # print("valid and fake", valid.shape, fake.shape)
 
         for epoch in range(epochs):
 
             # Train Discriminator
             idx = np.random.randint(0, X_train.shape[0], batch_size)
             vols = X_train[idx]
-            # print(vols.shape)
-
             masked_vols, missing_parts, _ = self.mask_randomly(vols)
-            # print("masked vol and missing parts", masked_vols.shape, missing_parts.shape)
-
             # Generate a batch
-            gen_missing = self.generator.predict(masked_vols)
-            print("shape of generator", gen_missing.shape)
+            gen_vol = self.generator.predict(masked_vols)
+            d_loss_real = self.discriminator.train_on_batch(vols, valid)
+            d_loss_fake = self.discriminator.train_on_batch(gen_vol, fake)
 
-            d_loss_real = self.discriminator.train_on_batch(missing_parts, valid)
-            d_loss_fake = self.discriminator.train_on_batch(gen_missing, fake)
             d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
 
             # Train Generator
-            g_loss = self.combined.train_on_batch(masked_vols, [missing_parts, valid])
+            g_loss = self.combined.train_on_batch(masked_vols, [vols, valid])
+
             print("%d [D loss: %f, acc: %.2f%%] [G loss: %f, mse: %f]" % (
                 epoch, d_loss[0], 100 * d_loss[1], g_loss[0], g_loss[1]))
 
             # save generated samples
             if epoch % sample_interval == 0:
-                idx = np.random.randint(0, X_train.shape[0], 2)
-                vols = X_train[idx]
-                self.sample_images(epoch, vols)
+                # idx = np.random.randint(0, X_train.shape[0], 2)
+                # vols = X_train[idx]
+                # self.sample_images(epoch, vols)
                 self.save_model()
+
+            # if epoch % 10 == 10-1:
+                fig = plt.figure()
+                fig = plt.figure(figsize=plt.figaspect(0.3))
+                ax1 = fig.add_subplot(131, title='masked volume', projection='3d')
+                ax2 = fig.add_subplot(132, title='valid missing', projection='3d') 
+                ax3 = fig.add_subplot(133, title='gen missing', projection='3d') 
+
+                ax1.voxels(masked_vols[0].reshape((32,32,32)).reshape((32,32,32)), facecolors='blue', edgecolor='k')
+                ax2.voxels(missing_parts[0].reshape((32,32,32)), facecolors='green', edgecolor='k')
+                gen_vol = np.where(gen_vol > 0.5, 1, 0)
+                print(gen_vol.shape)
+
+                ax3.voxels(gen_vol[0].reshape((32,32,32)), facecolors='red', edgecolor='k')
+                fig.savefig(os.path.join(IMAGE_DIR, "%d.png" % epoch))
+                # plt.show()
 
     def sample_images(self, epoch, vols):
         r, c = 2, 2
@@ -264,5 +280,5 @@ class EncoderDecoderGAN():
 
 
 if __name__ == '__main__':
-    context_encoder = EncoderDecoderGAN(64)
-    context_encoder.train(epochs=3000, batch_size=5, sample_interval=200)
+    context_encoder = EncoderDecoderGAN()
+    context_encoder.train(epochs=3000, batch_size=16, sample_interval=50)
