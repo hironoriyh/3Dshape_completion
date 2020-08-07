@@ -2,3 +2,7 @@ test/*
 trees/*
 data/*
 *.pyc
+gh_exported/*
+32_cube/*
+32_cube*
+64_cube*
