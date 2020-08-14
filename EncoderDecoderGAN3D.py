@@ -183,6 +183,9 @@ class EncoderDecoderGAN():
         valid = np.ones((batch_size, 1))
         fake = np.zeros((batch_size, 1))
 
+        g_losses = []
+        d_losses = []
+
         for epoch in range(epochs):
 
             # Train Discriminator
@@ -198,6 +201,9 @@ class EncoderDecoderGAN():
 
             # Train Generator
             g_loss = self.combined.train_on_batch(masked_vols, [vols, valid])
+
+            g_losses.append(g_loss)
+            d_losses.append(d_loss)
 
             print("%d [D loss: %f, acc: %.2f%%] [G loss: %f, mse: %f]" % (
                 epoch, d_loss[0], 100 * d_loss[1], g_loss[0], g_loss[1]))
@@ -222,7 +228,9 @@ class EncoderDecoderGAN():
                 print(gen_vol.shape)
 
                 ax3.voxels(gen_vol[0].reshape((32,32,32)), facecolors='red', edgecolor='k')
-                fig.savefig(os.path.join(IMAGE_DIR, "%d.png" % epoch))
+                fig.savefig(os.path.join(IMAGE_DIR, "%d_keras.png" % epoch))
+                np.save("32_cube/losses_keras", np.array(g_losses), np.array(d_losses))
+
                 # plt.show()
 
     def sample_images(self, epoch, vols):
@@ -281,4 +289,4 @@ class EncoderDecoderGAN():
 
 if __name__ == '__main__':
     context_encoder = EncoderDecoderGAN()
-    context_encoder.train(epochs=3000, batch_size=16, sample_interval=50)
+    context_encoder.train(epochs=3000, batch_size=16, sample_interval=100)
