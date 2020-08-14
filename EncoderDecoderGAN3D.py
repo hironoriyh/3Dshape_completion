@@ -19,9 +19,11 @@ from utils import mkdirs
 
 IMAGE_DIR = './32_cube/images'
 MODEL_DIR = './32_cube/saved_model'
-
+TESTDIR = os.path.join('32_cube', 'test')
+           
 mkdirs(IMAGE_DIR)
 mkdirs(MODEL_DIR)
+mkdirs(TESTDIR)
 
 
 class EncoderDecoderGAN():
@@ -178,7 +180,13 @@ class EncoderDecoderGAN():
 
     def train(self, epochs, batch_size=16, sample_interval=50):
 
-        X_train = self.generateWall()
+        # X_train = self.generateWall()
+        
+        X_train = np.load("data/train/all_train.npy")
+        X_masked_vols = np.load("data/train/all_masked_vols.npy")
+        X_missing_parts = np.load("data/train/all_missing_parts.npy")
+        print(X_train.shape)
+
         # Adversarial ground truths
         valid = np.ones((batch_size, 1))
         fake = np.zeros((batch_size, 1))
@@ -191,7 +199,13 @@ class EncoderDecoderGAN():
             # Train Discriminator
             idx = np.random.randint(0, X_train.shape[0], batch_size)
             vols = X_train[idx]
-            masked_vols, missing_parts, _ = self.mask_randomly(vols)
+
+            # masked_vols, missing_parts, _ = self.mask_randomly(vols)
+            masked_vols = X_masked_vols[idx]
+            missing_parts = X_missing_parts[idx]
+            # print(masked_vols.shape)
+            # print(missing_parts.shape)
+
             # Generate a batch
             gen_vol = self.generator.predict(masked_vols)
             d_loss_real = self.discriminator.train_on_batch(vols, valid)
@@ -233,50 +247,44 @@ class EncoderDecoderGAN():
 
                 # plt.show()
 
-    def sample_images(self, epoch, vols):
-        r, c = 2, 2
+    def sample_images(self):
 
-        masked_vols, missing_parts, (y1, y2, x1, x2, z1, z2) = self.mask_randomly(vols)
+        vols = np.load("data/test/all_test.npy")
+        masked_vols = np.load("data/test/all_masked_vols.npy")
+        missing_parts = np.load("data/test/all_missing_parts.npy")
         gen_missing = self.generator.predict(masked_vols)
-        gen_missing = np.where(gen_missing > 0.5, 1, 0)
-        fig = plt.figure(figsize=plt.figaspect(0.5), dpi=300)
+        gen_missing = np.where(gen_missing > 0.5, 1, 0)   
+        combined_vols = masked_vols + gen_missing
+        combined_vols = np.where(combined_vols > 0.9, 1, 0)   
+        print(np.where(combined_vols > 1))
 
-        vols = 0.5 * vols + 0.5
+        for i, vol in enumerate(vols):
 
-        for i in range(2):
-            masked_vol = masked_vols[i]
-            masked_vol = masked_vol[:, :, :, 0].astype(np.bool)
-            colors1 = np.empty(masked_vol.shape, dtype=object)
-            colors1[masked_vol] = 'red'
-            ax = fig.add_subplot(1, 2, 1, projection='3d')
-            ax.voxels(masked_vol, facecolors=colors1, edgecolor='black', linewidth=0.2)
-
-            filled_in = np.zeros_like(masked_vol)
-            # filled_in = vols[i].copy()
+            ### compute hamming loss
             one_gen_missing = gen_missing[i]
             one_gen_missing = one_gen_missing[:, :, :, 0].astype(np.bool)
 
-            # Compute hamming loss
             true_missing_part = missing_parts[i]
             true_missing_part = true_missing_part[:, :, :, 0].astype(np.bool)
             ham_loss = hamming_loss(true_missing_part.ravel(), one_gen_missing.ravel())
+            print("hamming loss", ham_loss)
 
-            filled_in[y1[i]:y2[i], x1[i]:x2[i], z1[i]:z2[i]] = one_gen_missing
-            fill = filled_in
-            combine_voxels = masked_vol | fill
+            fig = plt.figure()
+            fig = plt.figure(figsize=plt.figaspect(0.25))
+            fig.suptitle("Hamming Loss: %f" % ham_loss)
+            ax1 = fig.add_subplot(141, title='masked volume', projection='3d')
+            ax2 = fig.add_subplot(142, title='valid missing', projection='3d') 
+            ax3 = fig.add_subplot(143, title='gen missing', projection='3d') 
+            ax4 = fig.add_subplot(144, title='combined', projection='3d') 
 
-            colors2 = np.empty(combine_voxels.shape, dtype=object)
-            colors2[masked_vol] = 'red'
-            colors2[fill] = 'blue'
+            ax1.voxels(masked_vols[i].reshape((32,32,32)).reshape((32,32,32)), facecolors='blue', edgecolor='k')
+            ax2.voxels(missing_parts[i].reshape((32,32,32)), facecolors='green', edgecolor='k')
+                     
+            # print(gen_missing.shape)
+            ax3.voxels(gen_missing[i].reshape((32,32,32)), facecolors='red', edgecolor='k')
+            ax4.voxels(combined_vols[i].reshape((32,32,32)), facecolors='pink', edgecolor='k')
+            fig.savefig(os.path.join(TESTDIR, "%d.png" % i))
 
-            ax = fig.add_subplot(1, 2, 2, projection='3d')
-            ax.voxels(combine_voxels, facecolors=colors2, edgecolor='black', linewidth=0.2)
-            # ax.voxels(masked_vol, facecolors=colors1, edgecolor='k')
-            ax.set_title("Hamming Loss: %f" % ham_loss)
-            # plt.show()
-            fig.savefig(os.path.join(IMAGE_DIR, "%d_%d.png" % (epoch, i)))
-            print("saved sample images")
-            plt.close()
 
     def save_model(self):
         def save(model, model_name):

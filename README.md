@@ -16,8 +16,10 @@ Matplotlib>=2.2
 
 ## Example
 
-1. epxort pattern_1 and 2 text files from Rhino + Grasshopper
-2. extract voxel files by running  `python text2numpy.py`
+1. open  `trees/tree1.stl` and `trees/voxelize.gh`
+2. epxort pattern_1 and 2 text files from Rhino + Grasshopper
+3. extract voxel files by running  `python text2numpy.py --branch tree64`
+4. put them all in train and test folders 
 
 
 ~~~
