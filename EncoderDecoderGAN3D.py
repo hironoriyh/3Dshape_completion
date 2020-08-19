@@ -182,7 +182,7 @@ class EncoderDecoderGAN():
 
         # X_train = self.generateWall()
         
-        X_train = np.load("data/train/all_train.npy")
+        X_train = np.load("data/train/all_vols.npy")
         X_masked_vols = np.load("data/train/all_masked_vols.npy")
         X_missing_parts = np.load("data/train/all_missing_parts.npy")
         print(X_train.shape)
@@ -249,7 +249,7 @@ class EncoderDecoderGAN():
 
     def sample_images(self):
 
-        vols = np.load("data/test/all_test.npy")
+        vols = np.load("data/test/all_vols.npy")
         masked_vols = np.load("data/test/all_masked_vols.npy")
         missing_parts = np.load("data/test/all_missing_parts.npy")
         gen_missing = self.generator.predict(masked_vols)
