@@ -78,50 +78,33 @@ def main():
             print("failed to open" , filename,  path_1, path_2)
             continue
 
-        ## culled pattern_1
-        all_np = []
-        for vox in vox_all:
-            # print(i, vox)
-            if(vox== '0'):
-                all_np.append(0)
-            elif(vox=='1'):
-                all_np.append(1)
-            else:
-                print(vox)
-        all_np = np.array(all_np, dtype=np.uint8)
-        all_np = np.reshape(all_np, (size,size,size))
+
+        all_np = np.zeros(64**3, dtype=np.int8)
         print("pattern 1 is done", all_np.shape)
 
+        vox_all_np = np.array(vox_all)
+        # print(len(np.where(vox_all_np == '1')[0]))
+        all_np[np.where(vox_all_np == '1')] = 1
+        vox_mask = np.array(vox_mask)
+        
+        
         ## culled pattern_2
-        pattern_2 = []
-        for vox in vox_mask:
-            if(vox== '0'):
-                pattern_2.append(0)
-            elif(vox=='1'):
-                pattern_2.append(1)
-            else:
-                print(vox)
-        print(len(pattern_2))
+        pattern_2 = np.zeros(len(np.where(vox_all_np == '1')[0]), dtype=np.uint8)
+        pattern_2[np.where(vox_mask == '1')] = 1
+        # print(len(pattern_2))
 
-        culled_list = []
-        for n, i in enumerate(all_np.ravel()):
-            if(i == 1): 
-                culled_list.append(n)
-
-        culled_list_index = 0
         masked_vol = all_np.ravel().copy()
-        # print(masked_vol.shape)
-        missing_parts = np.zeros(size**3)
-
-        for i, vox in enumerate(masked_vol):
-            if any(i == c for c in culled_list):
-                if(pattern_2[culled_list_index] == 1):
-                    # print("missing parts" , i, "masked vol", masked_vol[i])
-                    missing_parts[i] = 1
-                    masked_vol[i] = 0
-                culled_list_index +=1
+        missing_parts = np.zeros(size**3, dtype=np.uint8).ravel()
+        vol_indicies = np.where(all_np.ravel() == 1)
+        # print(vol_indicies)
+        culled_vol_idx = np.delete(vol_indicies, np.where(pattern_2 == 0))
+        # print(culled_vol_idx)
+        masked_vol[culled_vol_idx] = 0
+        missing_parts[culled_vol_idx] = 1
+        print(np.where(missing_parts == 1))
 
         # print(missing_parts.shape, masked_vol.shape)
+        all_np = np.reshape(all_np, (size,size,size))
         missing_parts = np.reshape(missing_parts, (size,size,size))
         masked_vol = np.reshape(masked_vol, (size,size,size))
         print("shapes of missing parts and masked_vol", missing_parts.shape, masked_vol.shape)
@@ -134,9 +117,15 @@ def main():
         ax2 = fig.add_subplot(132, title='missing', projection='3d')
         ax3 = fig.add_subplot(133, title='masked volume', projection='3d') 
         # ax1 = fig.gca(projection='3d')
-        ax1.voxels(all_np, facecolors='red', edgecolor='k')
-        ax2.voxels(missing_parts, facecolors='green', edgecolor='k')
-        ax3.voxels(masked_vol, facecolors='blue', edgecolor='k')
+
+
+        # ax1.voxels(all_np, facecolors='red', edgecolor='k')
+        # ax2.voxels(missing_parts, facecolors='green', edgecolor='k')
+        # ax3.voxels(masked_vol, facecolors='blue', edgecolor='k')
+
+        ax1.voxels(all_np[::2][::2][::2], facecolors='red', edgecolor='k')
+        ax2.voxels(missing_parts[::2][::2][::2], facecolors='green', edgecolor='k')
+        ax3.voxels(masked_vol[::2][::2][::2], facecolors='blue', edgecolor='k')
 
         fig_path = os.path.join(output_dir , filename + ".png")
         plt.savefig(fig_path) # get only the filename
