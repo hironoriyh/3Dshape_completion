@@ -17,27 +17,24 @@ from tensorflow.keras.optimizers import Adam
 from sklearn.metrics import hamming_loss
 from utils import mkdirs
 
-IMAGE_DIR = './32_cube/images'
-MODEL_DIR = './32_cube/saved_model'
-TESTDIR = os.path.join('32_cube', 'test')
+size = 64 #32
+
+IMAGE_DIR = './%s_cube/images'%str(size)
+MODEL_DIR = './%s_cube/saved_model'%str(size)
+TESTDIR = os.path.join('%s_cube'%str(size), 'test')
            
 mkdirs(IMAGE_DIR)
 mkdirs(MODEL_DIR)
 mkdirs(TESTDIR)
 
-
 class EncoderDecoderGAN():
     def __init__(self):
-        self.vol_rows = 32
-        self.vol_cols = 32
-        self.vol_height = 32
-        self.mask_height = 16
-        self.mask_width = 16
-        self.mask_length = 16
+        self.vol_rows = size
+        self.vol_cols = size
+        self.vol_height = size
         self.channels = 1
         self.num_classes = 2
         self.vol_shape = (self.vol_rows, self.vol_cols, self.vol_height, self.channels)
-        self.missing_shape = (self.mask_height, self.mask_width, self.mask_length, self.channels)
 
         optimizer = Adam(0.0002, 0.5)
 
@@ -122,7 +119,6 @@ class EncoderDecoderGAN():
     def build_discriminator(self):
 
         model = Sequential()
-        # model.add(Conv3D(32, kernel_size=3, strides=2, input_shape=self.missing_shape, padding="same"))
 
         model.add(Conv3D(32, kernel_size=3, strides=2, input_shape=self.vol_shape, padding="same"))
         model.add(LeakyReLU(alpha=0.2))
@@ -140,43 +136,11 @@ class EncoderDecoderGAN():
         model.add(Dense(1, activation='sigmoid'))
         model.summary()
 
-        # vol = Input(shape=self.missing_shape)
         vol = Input(shape=self.vol_shape)
 
         validity = model(vol)
 
         return Model(vol, validity)
-
-    def generateWall(self):
-        x, y, z = np.indices((32, 32, 32))
-        voxel = (x < 28) & (x > 5) & (y > 5) & (y < 28) & (z > 10) & (z < 25)
-        # add channel
-        voxel = voxel[..., np.newaxis].astype(np.float)
-        # repeat 1000 times
-        voxels = list()
-        for i in range(1000):
-            voxels.append(voxel)
-        voxels = np.asarray(voxels)
-        return voxels
-
-    def mask_randomly(self, vols):
-        y1 = np.random.randint(0, self.vol_rows - self.mask_height, vols.shape[0])
-        y2 = y1 + self.mask_height
-        x1 = np.random.randint(0, self.vol_cols - self.mask_width, vols.shape[0])
-        x2 = x1 + self.mask_width
-        z1 = np.random.randint(0, self.vol_height - self.mask_length, vols.shape[0])
-        z2 = z1 + self.mask_length
-
-        masked_vols = np.empty_like(vols)
-        missing_parts = np.empty_like(vols)
-        for i, vol in enumerate(vols):
-            masked_vol = vol.copy()
-            _y1, _y2, _x1, _x2, _z1, _z2 = y1[i], y2[i], x1[i], x2[i], z1[i], z2[i]
-            masked_vol[_y1:_y2, _x1:_x2, _z1:_z2, :] = 0
-            masked_vols[i] = masked_vol
-            # print(vol.shape, masked_vol.shape)
-            missing_parts[i] = vol.copy() - masked_vol.copy() 
-        return masked_vols, missing_parts, (y1, y2, x1, x2, z1, z2)
 
     def train(self, epochs, batch_size=16, sample_interval=50):
 
@@ -234,16 +198,16 @@ class EncoderDecoderGAN():
                 fig = plt.figure(figsize=plt.figaspect(0.3))
                 ax1 = fig.add_subplot(131, title='masked volume', projection='3d')
                 ax2 = fig.add_subplot(132, title='valid missing', projection='3d') 
-                ax3 = fig.add_subplot(133, title='gen missing', projection='3d') 
+                ax3 = fig.add_subplot(133, title='gen combined', projection='3d') 
 
-                ax1.voxels(masked_vols[0].reshape((32,32,32)).reshape((32,32,32)), facecolors='blue', edgecolor='k')
-                ax2.voxels(missing_parts[0].reshape((32,32,32)), facecolors='green', edgecolor='k')
+                ax1.voxels(masked_vols[0].reshape((size,size,size)).reshape((size,size,size)), facecolors='blue', edgecolor='k')
+                ax2.voxels(missing_parts[0].reshape((size,size,size)), facecolors='green', edgecolor='k')
+                
                 gen_vol = np.where(gen_vol > 0.5, 1, 0)
-                print(gen_vol.shape)
-
-                ax3.voxels(gen_vol[0].reshape((32,32,32)), facecolors='red', edgecolor='k')
+                # print("gen_vol shape", gen_vol.shape)
+                ax3.voxels(gen_vol[0].reshape((size,size,size)), facecolors='red', edgecolor='k')
                 fig.savefig(os.path.join(IMAGE_DIR, "%d_keras.png" % epoch))
-                np.save("32_cube/losses_keras", np.array(g_losses), np.array(d_losses))
+                np.save("%s_cube/losses_keras"%str(size), np.array(g_losses), np.array(d_losses))
 
                 # plt.show()
 
@@ -277,12 +241,12 @@ class EncoderDecoderGAN():
             ax3 = fig.add_subplot(143, title='gen missing', projection='3d') 
             ax4 = fig.add_subplot(144, title='combined', projection='3d') 
 
-            ax1.voxels(masked_vols[i].reshape((32,32,32)).reshape((32,32,32)), facecolors='blue', edgecolor='k')
-            ax2.voxels(missing_parts[i].reshape((32,32,32)), facecolors='green', edgecolor='k')
+            ax1.voxels(masked_vols[i].reshape((size,size,size)).reshape((size,size,size)), facecolors='blue', edgecolor='k')
+            ax2.voxels(missing_parts[i].reshape((size,size,size)), facecolors='green', edgecolor='k')
                      
             # print(gen_missing.shape)
-            ax3.voxels(gen_missing[i].reshape((32,32,32)), facecolors='red', edgecolor='k')
-            ax4.voxels(combined_vols[i].reshape((32,32,32)), facecolors='pink', edgecolor='k')
+            ax3.voxels(gen_missing[i].reshape((size,size,size)), facecolors='red', edgecolor='k')
+            ax4.voxels(combined_vols[i].reshape((size,size,size)), facecolors='pink', edgecolor='k')
             fig.savefig(os.path.join(TESTDIR, "%d.png" % i))
 
 

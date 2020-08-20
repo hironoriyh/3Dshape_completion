@@ -54,7 +54,8 @@ def main():
 
     ## check if there is already files
     outputfiles = os.listdir(output_dir)
-    print(outputfiles)
+    # print(outputfiles)
+
     for filename in filenames:
         size = int(FLAGS.size)
         print(filename)
