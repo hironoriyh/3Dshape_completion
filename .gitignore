@@ -2,9 +2,11 @@ test/*
 trees/*
 data/*
 *.pyc
-gh_exported/*
+gh_exported*/
 32_cube/*
 32_cube*
 64_cube*
 gh_exported*/
 data*/
+mesh/*
+*ipynb_checkpoints

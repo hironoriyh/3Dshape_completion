@@ -28,6 +28,7 @@ mkdirs(MODEL_DIR)
 mkdirs(TESTDIR)
 
 class EncoderDecoderGAN():
+
     def __init__(self):
         self.vol_rows = size
         self.vol_cols = size
@@ -211,43 +212,49 @@ class EncoderDecoderGAN():
 
                 # plt.show()
 
-    def sample_images(self):
+    def test(self, path_, visualize = False):
 
-        vols = np.load("data/test/all_vols.npy")
-        masked_vols = np.load("data/test/all_masked_vols.npy")
-        missing_parts = np.load("data/test/all_missing_parts.npy")
+        vols = np.load(os.path.join(path_, "all_vols.npy"))
+        masked_vols = np.load(os.path.join(path_, "all_masked_vols.npy"))
+        missing_parts = np.load(os.path.join(path_, "all_missing_parts.npy"))
+
+        # vols = vols.reshape((1, size,size,size,1))
+        # masked_vols = masked_vols.reshape((1,size,size,size,1))
+        # missing_parts = missing_parts.reshape((1,size,size,size,1))
+
         gen_missing = self.generator.predict(masked_vols)
         gen_missing = np.where(gen_missing > 0.5, 1, 0)   
         combined_vols = masked_vols + gen_missing
         combined_vols = np.where(combined_vols > 0.9, 1, 0)   
-        print(np.where(combined_vols > 1))
+        # print(np.where(combined_vols > 1))
 
-        for i, vol in enumerate(vols):
+        if(visualize):
+            for i, vol in enumerate(vols):
 
-            ### compute hamming loss
-            one_gen_missing = gen_missing[i]
-            one_gen_missing = one_gen_missing[:, :, :, 0].astype(np.bool)
+                ### compute hamming loss
+                one_gen_missing = gen_missing[i]
+                one_gen_missing = one_gen_missing[:, :, :, 0].astype(np.bool)
 
-            true_missing_part = missing_parts[i]
-            true_missing_part = true_missing_part[:, :, :, 0].astype(np.bool)
-            ham_loss = hamming_loss(true_missing_part.ravel(), one_gen_missing.ravel())
-            print("hamming loss", ham_loss)
+                true_missing_part = missing_parts[i]
+                true_missing_part = true_missing_part[:, :, :, 0].astype(np.bool)
+                ham_loss = hamming_loss(true_missing_part.ravel(), one_gen_missing.ravel())
+                print("hamming loss", ham_loss)
 
-            fig = plt.figure()
-            fig = plt.figure(figsize=plt.figaspect(0.25))
-            fig.suptitle("Hamming Loss: %f" % ham_loss)
-            ax1 = fig.add_subplot(141, title='masked volume', projection='3d')
-            ax2 = fig.add_subplot(142, title='valid missing', projection='3d') 
-            ax3 = fig.add_subplot(143, title='gen missing', projection='3d') 
-            ax4 = fig.add_subplot(144, title='combined', projection='3d') 
+                fig = plt.figure()
+                fig = plt.figure(figsize=plt.figaspect(0.25))
+                fig.suptitle("Hamming Loss: %f" % ham_loss)
+                ax1 = fig.add_subplot(141, title='masked volume', projection='3d')
+                ax2 = fig.add_subplot(142, title='valid missing', projection='3d') 
+                ax3 = fig.add_subplot(143, title='gen missing', projection='3d') 
+                ax4 = fig.add_subplot(144, title='combined', projection='3d') 
 
-            ax1.voxels(masked_vols[i].reshape((size,size,size)).reshape((size,size,size)), facecolors='blue', edgecolor='k')
-            ax2.voxels(missing_parts[i].reshape((size,size,size)), facecolors='green', edgecolor='k')
-                     
-            # print(gen_missing.shape)
-            ax3.voxels(gen_missing[i].reshape((size,size,size)), facecolors='red', edgecolor='k')
-            ax4.voxels(combined_vols[i].reshape((size,size,size)), facecolors='pink', edgecolor='k')
-            fig.savefig(os.path.join(TESTDIR, "%d.png" % i))
+                ax1.voxels(masked_vols[i].reshape((size,size,size)).reshape((size,size,size)), facecolors='blue', edgecolor='k')
+                ax2.voxels(missing_parts[i].reshape((size,size,size)), facecolors='green', edgecolor='k')
+                # print(gen_missing.shape)
+                ax3.voxels(gen_missing[i].reshape((size,size,size)), facecolors='red', edgecolor='k')
+                ax4.voxels(combined_vols[i].reshape((size,size,size)), facecolors='pink', edgecolor='k')
+                fig.savefig(os.path.join(TESTDIR, "%d.png" % i))
+        return combined_vols
 
 
     def save_model(self):

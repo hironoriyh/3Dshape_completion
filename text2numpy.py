@@ -106,7 +106,7 @@ def main():
         # print(missing_parts.shape, masked_vol.shape)
         all_np = np.reshape(all_np, (size,size,size))
         missing_parts = np.reshape(missing_parts, (size,size,size))
-        masked_vol = np.reshape(masked_vol, (size,size,size))
+        masked_vol = np.reshape(masked_vol, (size,size,size)) 
         print("shapes of missing parts and masked_vol", missing_parts.shape, masked_vol.shape)
 
         fig = plt.figure()
@@ -130,6 +130,10 @@ def main():
         fig_path = os.path.join(output_dir , filename + ".png")
         plt.savefig(fig_path) # get only the filename
         # plt.show()
+
+        all_np = np.reshape(all_np, (size,size,size,1 ))
+        missing_parts = np.reshape(missing_parts, (size,size,size,1))
+        masked_vol = np.reshape(masked_vol, (size,size,size, 1)) 
         
         np.save(os.path.join(output_dir, filename + "_vol.npy"), all_np)
         np.save(os.path.join(output_dir, filename + "_missing.npy"), missing_parts)
